@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Консультант - Чат-бот для справки по SQL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .chat-container {
+            width: 100%;
+            max-width: 1100px;
+            height: 90vh;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: #2c3e50;
+            color: white;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .chat-header h1 {
+            font-size: 1.0rem;
+        }
+        
+        .chat-header p {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-reset {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        
+        .btn-reset:hover {
+            background: #c0392b;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message.user {
+            align-items: flex-end;
+        }
+        
+        .message.bot {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            max-width: 88%;
+            padding: 8px 12px;
+            border-radius: 14px;
+            word-wrap: break-word;
+            line-height: 1.4;
+            font-size: 0.85rem;
+        }
+        
+        .user .message-content {
+            background: #007bff;
+            color: white;
+            border-bottom-right-radius: 3px;
+        }
+        
+        .bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #dee2e6;
+            border-bottom-left-radius: 3px;
+            width: 100%;
+        }
+        
+        .sql-block {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin: 6px 0;
+            overflow-x: auto;
+        }
+        
+        .sql-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+        }
+        
+        .code-explanation {
+            background: #f0f4f8;
+            border-left: 3px solid #007bff;
+            padding: 6px 10px;
+            margin: 6px 0;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .table-structure {
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        
+        .table-structure h4 {
+            margin: 6px 0 3px;
+            color: #2c3e50;
+            font-size: 0.8rem;
+        }
+        
+        .table-structure table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            margin-bottom: 6px;
+        }
+        
+        .table-structure th, .table-structure td {
+            border: 1px solid #ddd;
+            padding: 2px 6px;
+            text-align: left;
+        }
+        
+        .table-structure th {
+            background: #2c3e50;
+            color: white;
+            font-size: 0.7rem;
+        }
+        
+        .table-structure tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+        
+        .table-structure .null-value {
+            color: #999;
+            font-style: italic;
+        }
+        
+        .sample-result {
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        
+        .sample-result h4 {
+            margin: 6px 0 3px;
+            color: #27ae60;
+            font-size: 0.8rem;
+        }
+        
+        .row-count-note {
+            font-weight: normal;
+            font-size: 0.65rem;
+            color: #888;
+        }
+        
+        .sample-result table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+        
+        .sample-result th, .sample-result td {
+            border: 1px solid #ddd;
+            padding: 2px 6px;
+            text-align: left;
+        }
+        
+        .sample-result th {
+            background: #27ae60;
+            color: white;
+            font-size: 0.7rem;
+        }
+        
+        .sample-result tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+        
+        .category-tag {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            margin-top: 4px;
+            color: #495057;
+        }
+        
+        .confidence-bar {
+            height: 2px;
+            background: #e9ecef;
+            margin-top: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: #27ae60;
+            transition: width 0.3s;
+        }
+        
+        .chat-input-area {
+            padding: 10px 16px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .chat-input-area input {
+            flex: 1;
+            padding: 8px 14px;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        
+        .chat-input-area input:focus {
+            border-color: #007bff;
+        }
+        
+        .chat-input-area button {
+            padding: 8px 18px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        
+        .chat-input-area button:hover {
+            background: #0056b3;
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+        
+        /* Кнопки уточнения */
+        .feedback-container {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .feedback-btn {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: background 0.2s;
+            font-weight: 500;
+        }
+        
+        .feedback-btn.yes-btn {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .feedback-btn.yes-btn:hover {
+            background: #219a52;
+        }
+        
+        .feedback-btn.more-btn {
+            background: #3498db;
+            color: white;
+        }
+        
+        .feedback-btn.more-btn:hover {
+            background: #2980b9;
+        }
+        
+        .feedback-message {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 6px;
+        }
+        
+        .small-text {
+            font-size: 0.65rem;
+            color: #6c757d;
+        }
+        
+        .bot .message-content strong {
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div>
+                <h1>🛢️ SQL Консультант</h1>
+                <p>Справка по SQL | Примеры кода | Уточняющие ответы</p>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-reset" onclick="resetChat()">🗑️ Сброс</button>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    👋 Привет! Я SQL Консультант.<br><br>
+                    <strong>Что я умею:</strong><br>
+                    • 📖 Даю справку по SQL конструкциям с примерами кода<br>
+                    • 📊 Показываю структуру таблиц и результат выполнения<br>
+                    • 🔍 Понимаю вопросы на русском и английском языке<br>
+                    <br>
+                    <strong>Попробуй спросить:</strong><br>
+                    • "Как объединить две таблицы?"<br>
+                    • "Что такое подзапрос?"<br>
+                    • "Как создать таблицу с первичным ключом?"<br>
+                    • "Объясни LEFT JOIN"<br>
+                    • "Как удалить дубликаты?"
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <input type="text" id="messageInput" placeholder="Спроси про SQL..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+    </div>
+    
+    <script>
+        let isWaiting = false;
+        let currentQuestion = '';
+        let currentId = null;
+        let shownIds = [];
+        let alternativeCount = 0;  // Счётчик показанных альтернатив
+        const MAX_ALTERNATIVES = 2; // Максимум 2 уточняющих вопроса
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !isWaiting) {
+                sendMessage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatSqlCode(sql) {
+            if (!sql) return '';
+            return `<div class="sql-block"><pre><code class="language-sql">${escapeHtml(sql)}</code></pre></div>`;
+        }
+        
+        function formatCodeExplanation(explanation) {
+            if (!explanation) return '';
+            return `<div class="code-explanation">${escapeHtml(explanation)}</div>`;
+        }
+        
+        function formatTableStructure(tableStructure) {
+            if (!tableStructure || tableStructure.length === 0) return '';
+            
+            let html = '<div class="table-structure">';
+            for (let table of tableStructure) {
+                const total = table.total_rows;
+                const shown = table.sample_rows ? table.sample_rows.length : 0;
+                const countNote = (total !== undefined && total !== null)
+                    ? ` <span class="row-count-note">(${table.truncated ? `показано ${shown} из ${total}` : `всего строк: ${total}`})</span>`
+                    : '';
+                html += `<h4>📊 Таблица ${escapeHtml(table.name)}${countNote}</h4>`;
+                html += '<table><thead><tr>';
+                for (let col of table.columns) {
+                    html += `<th>${escapeHtml(col)}</th>`;
+                }
+                html += '</tr></thead><tbody>';
+                for (let row of table.sample_rows) {
+                    html += '<tr>';
+                    for (let cell of row) {
+                        const cellText = cell !== null && cell !== undefined ? cell : 'NULL';
+                        const cellClass = cell === null || cell === undefined ? 'null-value' : '';
+                        html += `<td class="${cellClass}">${escapeHtml(String(cellText))}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+            }
+            html += '</div>';
+            return html;
+        }
+        
+        function formatSampleResult(sampleResult, isLive) {
+            if (!sampleResult || sampleResult.length === 0) return '';
+            
+            let html = '<div class="sample-result">';
+            html += '<h4>📋 Результат запроса</h4>';
+            html += '<table><thead><tr>';
+            for (let key of Object.keys(sampleResult[0])) {
+                html += `<th>${escapeHtml(key)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            for (let row of sampleResult) {
+                html += '<tr>';
+                for (let key of Object.keys(row)) {
+                    html += `<td>${escapeHtml(String(row[key] !== null && row[key] !== undefined ? row[key] : 'NULL'))}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
+            return html;
+        }
+        
+        function addMessage(text, isUser, metadata = null) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            let contentHtml = `<div class="message-content">`;
+            
+            if (isUser) {
+                contentHtml += escapeHtml(text);
+            } else {
+                contentHtml += text;
+            }
+            
+            if (metadata && !isUser) {
+                if (metadata.category) {
+                    contentHtml += `<div class="category-tag">📁 ${escapeHtml(metadata.category)}</div>`;
+                }
+                if (metadata.confidence) {
+                    contentHtml += `
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${metadata.confidence}%"></div>
+                        </div>
+                        <small style="font-size: 0.65rem; color: #6c757d;">Уверенность: ${metadata.confidence}%</small>
+                    `;
+                }
+            }
+            
+            contentHtml += `</div>`;
+            messageDiv.innerHTML = contentHtml;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+        
+        function showFeedbackButtons(hasAlt) {
+            const messagesDiv = document.getElementById('chatMessages');
+            
+            const oldFeedback = document.getElementById('feedbackContainer');
+            if (oldFeedback) oldFeedback.remove();
+            
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'message bot';
+            feedbackDiv.id = 'feedbackContainer';
+            
+            let html = `<div class="message-content">`;
+            html += `<div class="feedback-message">💡 <strong>Этот ответ вам подходит?</strong></div>`;
+            html += `<div class="feedback-container">`;
+            html += `<button class="feedback-btn yes-btn" onclick="acceptAnswer()">✅ Да, отлично</button>`;
+            
+            if (hasAlt) {
+                html += `<button class="feedback-btn more-btn" onclick="showAlternatives()">🔄 Другие варианты</button>`;
+            }
+            
+            html += `</div></div>`;
+            
+            feedbackDiv.innerHTML = html;
+            messagesDiv.appendChild(feedbackDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function acceptAnswer() {
+            const feedback = document.getElementById('feedbackContainer');
+            if (feedback) {
+                feedback.innerHTML = `<div class="message-content">✅ Отлично! Рад, что помог. Если будут ещё вопросы — спрашивайте.</div>`;
+            }
+            alternativeCount = 0;
+        }
+        
+        function showAlternatives() {
+            // Увеличиваем счётчик
+            alternativeCount++;
+            
+            // Если уже показали 2 альтернативы — предлагаем переформулировать
+            if (alternativeCount > MAX_ALTERNATIVES) {
+                const feedback = document.getElementById('feedbackContainer');
+                if (feedback) {
+                    feedback.innerHTML = `<div class="message-content">🔄 Попробуйте переформулировать ваш запрос более точно. Я готов помочь!</div>`;
+                }
+                return;
+            }
+            
+            if (!currentId) {
+                addMessage('😕 Не могу найти альтернативы.', false);
+                return;
+            }
+            
+            const feedback = document.getElementById('feedbackContainer');
+            if (feedback) feedback.remove();
+            
+            if (currentId) {
+                shownIds.push(currentId);
+            }
+            
+            showTypingIndicator();
+            
+            fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: currentQuestion,
+                    action: 'alternative',
+                    current_id: currentId,
+                    shown_ids: shownIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideTypingIndicator();
+                
+                if (data.type === 'alternative' && data.found) {
+                    currentId = data.current_id;
+                    
+                    let reply = `<strong>${escapeHtml(data.question)}</strong>\n\n`;
+                    reply += `${escapeHtml(data.answer)}\n\n`;
+                    
+                    if (data.sql_example) {
+                        reply += `<strong>SQL-пример:</strong>\n${formatSqlCode(data.sql_example)}\n`;
+                    }
+                    
+                    if (data.code_explanation) {
+                        reply += `<strong>📖 Пояснение к коду:</strong>\n${formatCodeExplanation(data.code_explanation)}\n`;
+                    }
+                    
+                    if (data.table_structure && data.table_structure.length > 0) {
+                        reply += formatTableStructure(data.table_structure);
+                    }
+                    
+                    if (data.sample_result && data.sample_result.length > 0) {
+                        reply += formatSampleResult(data.sample_result, data.live);
+                    }
+                    
+                    addMessage(reply, false, {
+                        category: data.category,
+                        confidence: data.confidence
+                    });
+                    
+                    const hasMore = data.remaining_alternatives && data.remaining_alternatives.length > 0;
+                    showFeedbackButtons(hasMore);
+                    
+                } else if (data.type === 'no_more') {
+                    addMessage(`😕 ${data.message}`, false);
+                } else {
+                    addMessage('😕 Не удалось найти другие варианты.', false);
+                }
+            })
+            .catch(error => {
+                hideTypingIndicator();
+                addMessage('❌ Ошибка при поиске альтернатив.', false);
+            });
+        }
+        
+        function showTypingIndicator() {
+            const messagesDiv = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'message bot';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = `
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(indicator);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        async function sendMessage() {
+            if (isWaiting) return;
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Сбрасываем состояние уточнения
+            currentQuestion = message;
+            currentId = null;
+            shownIds = [];
+            alternativeCount = 0;
+            
+            const oldFeedback = document.getElementById('feedbackContainer');
+            if (oldFeedback) oldFeedback.remove();
+            
+            addMessage(message, true);
+            input.value = '';
+            isWaiting = true;
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: message,
+                        action: 'search'
+                    })
+                });
+                
+                const data = await response.json();
+                hideTypingIndicator();
+                
+                if (data.type === 'answer') {
+                    if (data.found) {
+                        let reply = `<strong>${escapeHtml(data.question)}</strong>\n\n`;
+                        reply += `${escapeHtml(data.answer)}\n\n`;
+                        
+                        if (data.sql_example) {
+                            reply += `<strong>SQL-пример:</strong>\n${formatSqlCode(data.sql_example)}\n`;
+                        }
+                        
+                        if (data.code_explanation) {
+                            reply += `<strong>📖 Пояснение к коду:</strong>\n${formatCodeExplanation(data.code_explanation)}\n`;
+                        }
+                        
+                        if (data.table_structure && data.table_structure.length > 0) {
+                            reply += formatTableStructure(data.table_structure);
+                        }
+                        
+                        if (data.sample_result && data.sample_result.length > 0) {
+                            reply += formatSampleResult(data.sample_result, data.live);
+                        }
+                        
+                        currentId = data.current_id;
+                        const hasAlt = data.has_alternatives || false;
+                        
+                        addMessage(reply, false, {
+                            category: data.category,
+                            confidence: data.confidence
+                        });
+                        
+                        showFeedbackButtons(hasAlt);
+                        
+                    } else {
+                        let reply = `😕 ${data.message}`;
+                        if (data.suggestions && data.suggestions.length > 0) {
+                            reply += `\n\n**Возможно, вы имели в виду:**\n`;
+                            for (let s of data.suggestions.slice(0, 3)) {
+                                reply += `• ${escapeHtml(s)}\n`;
+                            }
+                        }
+                        addMessage(reply, false);
+                    }
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('❌ Ошибка соединения. Убедитесь, что сервер запущен.', false);
+            } finally {
+                isWaiting = false;
+            }
+        }
+        
+        async function resetChat() {
+            try {
+                await fetch('/reset', { method: 'POST' });
+                const messagesDiv = document.getElementById('chatMessages');
+                messagesDiv.innerHTML = `
+                    <div class="message bot">
+                        <div class="message-content">
+                            🗑️ История диалога очищена. Задайте новый вопрос!
+                        </div>
+                    </div>
+                `;
+                currentQuestion = '';
+                currentId = null;
+                shownIds = [];
+                alternativeCount = 0;
+                const oldFeedback = document.getElementById('feedbackContainer');
+                if (oldFeedback) oldFeedback.remove();
+            } catch (error) {
+                console.error('Ошибка сброса:', error);
+            }
+        }
+    </script>
+</body>
+</html>
